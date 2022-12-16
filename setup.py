@@ -7,4 +7,4 @@ setup(name='qnapdisplay_truenas',
       author='ITninja04',
       license='MIT',
       packages=['qnapdisplay_truenas'],
-      install_requires=['pyserial', 'serial', 'netaddr', 'psutil', 'netaddr'])
+      install_requires=['pyserial', 'netaddr', 'psutil', 'netaddr', 'python-daemon', 'argparse'])

@@ -1,25 +1,24 @@
 import datetime
 import os
-import signal
-import sys
-import time
-
 import psutil
 import re
 import socket
 import threading
 from netaddr import IPAddress
 
-from daemon import Daemon
 from qnapdisplay import QnapDisplay
 
 
-class QnapLCDDaemon(Daemon):
+class QnapLCDDaemon:
     Lcd = QnapDisplay()
     infoIndex = 0
     t = None
     blankLcdTimeout = 5
-    Running = True
+    Running = False
+    Logging = None
+
+    def __init__(self, _logging):
+        self.Logging = _logging
 
     def getDataArray(self):
         output = []
@@ -101,7 +100,7 @@ class QnapLCDDaemon(Daemon):
         return pool_data_dict
 
     def timerCallback(self):
-        self.Lcd.Disable()
+        self.Lcd.disable()
 
     def timerReset(self, t=None):
         if t:
@@ -110,88 +109,15 @@ class QnapLCDDaemon(Daemon):
         t.start()
         return t
 
-    def __init__(self, daemon, pidfile, workdir='/'):
-        """Constructor.
-
-        @param daemon: daemon class (not instance)
-        @param pidfile: daemon pid file
-        @param workdir: daemon working directory
-        """
-        self.daemon = daemon
-        self.pidfile = pidfile
-        self.workdir = workdir
-
-    def start(self):
-        """Start the daemon.
-        """
-        try:  # check for pidfile to see if the daemon already runs
-            with open(self.pidfile, 'r') as pf:
-                pid = int(pf.read().strip())
-                self.Running = True
-        except IOError:
-            pid = None
-
-        if pid:
-            message = "pidfile {0} already exist. " + \
-                      "Daemon already running?\n"
-            sys.stderr.write(message.format(self.pidfile))
-            self.Running = True
-            sys.exit(1)
-
-        # Start the daemon
-        d = self.daemon(self.pidfile, self.workdir)
-        d.daemonize()
-
-    def stop(self):
-        """Stop the daemon.
-
-        This is purely based on the pidfile / process control
-        and does not reference the daemon class directly.
-        """
-        try:  # get the pid from the pidfile
-            with open(self.pidfile, 'r') as pf:
-                pid = int(pf.read().strip())
-
-            self.Running = False
-        except IOError:
-            pid = None
-
-        if not pid:
-            message = "pidfile {0} does not exist. " + \
-                      "Daemon not running?\n"
-            sys.stderr.write(message.format(self.pidfile))
-            self.Running = False
-            return  # not an error in a restart
-
-        try:  # try killing the daemon process
-            while 1:
-                os.kill(pid, signal.SIGTERM)
-                time.sleep(0.1)
-                self.Running = False
-        except OSError as err:
-            e = str(err.args)
-            if e.find("No such process") > 0:
-                if os.path.exists(self.pidfile):
-                    os.remove(self.pidfile)
-            else:
-                print(str(err.args))
-                sys.exit(1)
-
-    def restart(self):
-        """Restart the daemon.
-        """
-        self.stop()
-        self.start()
-
     def run(self):
         while self.Running:
-            t = self.timerReset(t)
-            self.Lcd.Enable()
+            self.t = self.timerReset(self.t)
+            self.Lcd.enable()
             data = self.getDataArray()
-            self.Lcd.Write(0, data[infoIndex][0])
-            self.Lcd.Write(1, data[infoIndex][1])
-            if self.Lcd.Read() == "Up":
-                delta = -1;
+            self.Lcd.write(0, data[self.infoIndex][0])
+            self.Lcd.write(1, data[self.infoIndex][1])
+            if self.Lcd.read() == "Up":
+                delta = -1
             else:
-                delta = +1;
-            infoIndex = (infoIndex + delta) % len(data)
+                delta = +1
+            self.infoIndex = (self.infoIndex + delta) % len(data)
