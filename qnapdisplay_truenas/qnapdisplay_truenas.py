@@ -2,7 +2,7 @@
 from qnap_lcd_daemon import QnapLCDDaemon
 import argparse
 import daemon
-from daemon import pidfile
+# from daemon import pidfile
 from qnapdisplay_logger import generate_logger
 
 def start_daemon(pidf, logf):
@@ -16,6 +16,8 @@ def start_daemon(pidf, logf):
 
     # with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(pidf), ) as context:
     #     qnap_lcd_damon.run()
+
+
 
 
 
