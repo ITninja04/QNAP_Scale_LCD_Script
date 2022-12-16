@@ -1,5 +1,9 @@
 import datetime
 import os
+import signal
+import sys
+import time
+
 import psutil
 import re
 import socket
@@ -8,6 +12,7 @@ from netaddr import IPAddress
 
 from daemon import Daemon
 from qnapdisplay import QnapDisplay
+
 
 class QnapLCDDaemon(Daemon):
     Lcd = QnapDisplay()
@@ -37,7 +42,7 @@ class QnapLCDDaemon(Daemon):
             output.append([network['network'], "{}/{}".format(network['address'], network['netmask'])])
         return (output)
 
-    def getNetworks(network_regex="^eth|^enp|^bond|^br|^vlan"):
+    def getNetworks(self, network_regex="^eth|^enp|^bond|^br|^vlan"):
         cleaned_networks = []
         networks = psutil.net_if_addrs()
         for idx, network in enumerate(networks):
@@ -104,6 +109,79 @@ class QnapLCDDaemon(Daemon):
         t = threading.Timer(self.blankLcdTimeout, self.timerCallback)
         t.start()
         return t
+
+    def __init__(self, daemon, pidfile, workdir='/'):
+        """Constructor.
+
+        @param daemon: daemon class (not instance)
+        @param pidfile: daemon pid file
+        @param workdir: daemon working directory
+        """
+        self.daemon = daemon
+        self.pidfile = pidfile
+        self.workdir = workdir
+
+    def start(self):
+        """Start the daemon.
+        """
+        try:  # check for pidfile to see if the daemon already runs
+            with open(self.pidfile, 'r') as pf:
+                pid = int(pf.read().strip())
+                self.Running = True
+        except IOError:
+            pid = None
+
+        if pid:
+            message = "pidfile {0} already exist. " + \
+                      "Daemon already running?\n"
+            sys.stderr.write(message.format(self.pidfile))
+            self.Running = True
+            sys.exit(1)
+
+        # Start the daemon
+        d = self.daemon(self.pidfile, self.workdir)
+        d.daemonize()
+
+    def stop(self):
+        """Stop the daemon.
+
+        This is purely based on the pidfile / process control
+        and does not reference the daemon class directly.
+        """
+        try:  # get the pid from the pidfile
+            with open(self.pidfile, 'r') as pf:
+                pid = int(pf.read().strip())
+
+            self.Running = False
+        except IOError:
+            pid = None
+
+        if not pid:
+            message = "pidfile {0} does not exist. " + \
+                      "Daemon not running?\n"
+            sys.stderr.write(message.format(self.pidfile))
+            self.Running = False
+            return  # not an error in a restart
+
+        try:  # try killing the daemon process
+            while 1:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.1)
+                self.Running = False
+        except OSError as err:
+            e = str(err.args)
+            if e.find("No such process") > 0:
+                if os.path.exists(self.pidfile):
+                    os.remove(self.pidfile)
+            else:
+                print(str(err.args))
+                sys.exit(1)
+
+    def restart(self):
+        """Restart the daemon.
+        """
+        self.stop()
+        self.start()
 
     def run(self):
         while self.Running:

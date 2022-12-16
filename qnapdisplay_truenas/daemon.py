@@ -1,127 +1,82 @@
-import sys, os, time, atexit
-from signal import SIGTERM
+import atexit
+import os
+import sys
+import time
+
 
 class Daemon:
-        """
-        A generic daemon class.
+    """A generic daemon base class.
+            Usage: subclass this class and override the run() method.
+            """
 
-        Usage: subclass the Daemon class and override the run() method
-        """
-        def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
-                self.stdin = stdin
-                self.stdout = stdout
-                self.stderr = stderr
-                self.pidfile = pidfile
+    def __init__(self, pidfile, workpath='/'):
+        """Constructor.
 
-        def daemonize(self):
+                We need the pidfile for the atexit cleanup method.
+                The workpath is the path the daemon will operate
+                in. Normally this is the root directory, but can be some
+                data directory too, just make sure it exists.
                 """
-                do the UNIX double-fork magic, see Stevens' "Advanced
-                Programming in the UNIX Environment" for details (ISBN 0201563177)
-                http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16
+        self.pidfile = pidfile
+        self.workpath = workpath
+
+    def perror(self, msg, err):
+        """Print error message and exit. (helper method)
                 """
-                try:
-                        pid = os.fork()
-                        if pid > 0:
-                                # exit first parent
-                                sys.exit(0)
-                except OSError as e:
-                        sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
-                        sys.exit(1)
+        msg = msg + '\n'
+        sys.stderr.write(msg.format(err))
+        sys.exit(1)
 
-                # decouple from parent environment
-                os.chdir("/")
-                os.setsid()
-                os.umask(0)
-
-                # do second fork
-                try:
-                        pid = os.fork()
-                        if pid > 0:
-                                # exit from second parent
-                                sys.exit(0)
-                except OSError as e:
-                        sys.stderr.write("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
-                        sys.exit(1)
-
-                # redirect standard file descriptors
-                sys.stdout.flush()
-                sys.stderr.flush()
-                si = open(self.stdin, 'r')
-                so = open(self.stdout, 'a+')
-                se = open(self.stderr, 'a+', 0)
-                os.dup2(si.fileno(), sys.stdin.fileno())
-                os.dup2(so.fileno(), sys.stdout.fileno())
-                os.dup2(se.fileno(), sys.stderr.fileno())
-
-                # write pidfile
-                atexit.register(self.delpid)
-                pid = str(os.getpid())
-                open(self.pidfile,'w+').write("%s\n" % pid)
-
-        def delpid(self):
-                os.remove(self.pidfile)
-
-        def start(self):
+    def daemonize(self):
+        """Deamonize calss process. (UNIX double fork mechanism).
                 """
-                Start the daemon
-                """
-                # Check for a pidfile to see if the daemon already runs
-                try:
-                        pf = open(self.pidfile,'r')
-                        pid = int(pf.read().strip())
-                        pf.close()
-                except IOError:
-                        pid = None
+        if not os.path.isdir(self.workpath):
+            self.perror('workpath does not exist!', '')
 
-                if pid:
-                        message = "pidfile %s already exist. Daemon already running?\n"
-                        sys.stderr.write(message % self.pidfile)
-                        sys.exit(1)
+        try:  # exit first parent process
+            pid = os.fork()
+            if pid > 0: sys.exit(0)
+        except OSError as err:
+            self.perror('fork #1 failed: {0}', err)
 
-                # Start the daemon
-                self.daemonize()
-                self.run()
+        # decouple from parent environment
+        try:
+            os.chdir(self.workpath)
+        except OSError as err:
+            self.perror('path change failed: {0}', err)
 
-        def stop(self):
-                """
-                Stop the daemon
-                """
-                # Get the pid from the pidfile
-                try:
-                        pf = open(self.pidfile,'r')
-                        pid = int(pf.read().strip())
-                        pf.close()
-                except IOError:
-                        pid = None
+        os.setsid()
+        os.umask(0)
 
-                if not pid:
-                        message = "pidfile %s does not exist. Daemon not running?\n"
-                        sys.stderr.write(message % self.pidfile)
-                        return # not an error in a restart
+        try:  # exit from second parent
+            pid = os.fork()
+            if pid > 0: sys.exit(0)
+        except OSError as err:
+            self.perror('fork #2 failed: {0}', err)
 
-                # Try killing the daemon process       
-                try:
-                        while 1:
-                                os.kill(pid, SIGTERM)
-                                time.sleep(0.1)
-                except OSError as err:
-                        err = str(err)
-                        if err.find("No such process") > 0:
-                                if os.path.exists(self.pidfile):
-                                        os.remove(self.pidfile)
-                        else:
-                                print(err)
-                                sys.exit(1)
+        # redirect standard file descriptors
+        sys.stdout.flush()
+        sys.stderr.flush()
+        si = open(os.devnull, 'r')
+        so = open(os.devnull, 'a+')
+        se = open(os.devnull, 'a+')
+        os.dup2(si.fileno(), sys.stdin.fileno())
+        os.dup2(so.fileno(), sys.stdout.fileno())
+        os.dup2(se.fileno(), sys.stderr.fileno())
 
-        def restart(self):
-                """
-                Restart the daemon
-                """
-                self.stop()
-                self.start()
+        # write pidfile
+        atexit.register(os.remove, self.pidfile)
+        pid = str(os.getpid())
+        with open(self.pidfile, 'w+') as f:
+            f.write(pid + '\n')
+        self.run()
 
-        def run(self):
+    def run(self):
+        """Worker method.
+
+                It will be called after the process has been daemonized
+                by start() or restart(). You'll have to overwrite this
+                method with the daemon program logic.
                 """
-                You should override this method when you subclass Daemon. It will be called after the process has been
-                daemonized by start() or restart().
-                """
+        while True:
+            time.sleep(1)
