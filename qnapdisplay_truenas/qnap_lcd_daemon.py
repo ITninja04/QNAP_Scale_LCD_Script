@@ -14,7 +14,7 @@ class QnapLCDDaemon:
     infoIndex = 0
     t = None
     blankLcdTimeout = 5
-    Running = False
+    Running = True
     Logging = None
 
     def __init__(self, _logging):
@@ -110,6 +110,7 @@ class QnapLCDDaemon:
         return t
 
     def run(self):
+        self.Logging.info("Starting QNAP Display Service")
         while self.Running:
             self.t = self.timerReset(self.t)
             self.Lcd.enable()

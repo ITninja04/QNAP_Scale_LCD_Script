@@ -7,6 +7,10 @@ from daemon import pidfile
 
 
 def start_daemon(pidf, logf):
+    print('Starting QNAP Display Daemon')
+    print('PID Path: ' + pidf)
+    print('Log Path: ' + logf)
+
     logger = logging.getLogger('qnapdisplay_truenas_daemon')
     logger.setLevel(logging.INFO)
 
@@ -19,7 +23,6 @@ def start_daemon(pidf, logf):
     fh.setFormatter(formatter)
 
     logger.addHandler(fh)
-    ### This launches the daemon in its context
     qnap_lcd_damon = QnapLCDDaemon(logger)
 
     with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(pidf), ) as context:
@@ -27,7 +30,7 @@ def start_daemon(pidf, logf):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Example daemon in Python")
+    parser = argparse.ArgumentParser(description="QNAP Display Driver for TrueNAS")
     parser.add_argument('-p', '--pid-file', default='/var/run/qnapdisplay_truenas.pid')
     parser.add_argument('-l', '--log-file', default='/var/log/qnapdisplay_truenas.log')
     args = parser.parse_args()
