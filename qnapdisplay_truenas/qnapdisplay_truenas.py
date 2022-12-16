@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import sys
-from daemon import Daemon
-from qnapdisplay import QnapDisplay
 from qnap_lcd_daemon import QnapLCDDaemon
 
 if __name__ == "__main__":
