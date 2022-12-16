@@ -1,4 +1,4 @@
-# Truenas Scale - QNAP LCD Script
+# TrueNAS Scale - QNAP LCD Script
 
 ## Installation
 
