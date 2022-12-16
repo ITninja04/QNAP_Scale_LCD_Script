@@ -1,6 +1,5 @@
 import serial
 
-
 class QnapDisplay:
     # Qnap connects its serial to ttys1
     ser = serial.Serial('/dev/ttyS1', 1200)
