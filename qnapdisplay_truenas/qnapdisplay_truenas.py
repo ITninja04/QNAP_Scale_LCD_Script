@@ -1,32 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 from qnap_lcd_daemon import QnapLCDDaemon
 import argparse
 import daemon
-import logging
 from daemon import pidfile
-
+from qnapdisplay_logger import generate_logger
 
 def start_daemon(pidf, logf):
     print('Starting QNAP Display Daemon')
     print('PID Path: ' + pidf)
     print('Log Path: ' + logf)
-
-    logger = logging.getLogger('qnapdisplay_truenas_daemon')
-    logger.setLevel(logging.INFO)
-
-    fh = logging.FileHandler(logf)
-    fh.setLevel(logging.INFO)
-
-    formatstr = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    formatter = logging.Formatter(formatstr)
-
-    fh.setFormatter(formatter)
-
-    logger.addHandler(fh)
+    logger = generate_logger(logf)
     qnap_lcd_damon = QnapLCDDaemon(logger)
-
-    with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(pidf), ) as context:
+    with daemon.DaemonContext():
         qnap_lcd_damon.run()
+
+    # with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(pidf), ) as context:
+    #     qnap_lcd_damon.run()
+
 
 
 if __name__ == "__main__":

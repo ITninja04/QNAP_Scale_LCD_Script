@@ -18,7 +18,10 @@ class QnapLCDDaemon:
     Logging = None
 
     def __init__(self, _logging):
-        self.Logging = _logging
+        print('Initialized qnap_lcd_daemon')
+        if _logging:
+            self.Logging = _logging
+        self.Logging.info("Starting QNAP Display Service")
 
     def getDataArray(self):
         output = []
@@ -110,6 +113,7 @@ class QnapLCDDaemon:
         return t
 
     def run(self):
+        print('Executing Daemon Run Method...')
         self.Logging.info("Starting QNAP Display Service")
         while self.Running:
             self.t = self.timerReset(self.t)
