@@ -20,13 +20,8 @@ def start_daemon(pidf, logf):
 
     logger.addHandler(fh)
     ### This launches the daemon in its context
-    global debug_p
     qnap_lcd_damon = QnapLCDDaemon(logger)
 
-    if debug_p:
-        print("qnapdisplay_truenas: entered run()")
-        print("qnapdisplay_truenas: pidf = {}    logf = {}".format(pidf, logf))
-        print("qnapdisplay_truenas: about to start daemonization")
     with daemon.DaemonContext(pidfile=pidfile.TimeoutPIDLockFile(pidf), ) as context:
         qnap_lcd_damon.run()
 
